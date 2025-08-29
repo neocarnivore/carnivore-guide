@@ -4,30 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>食材ガイド＋目安量（Carnivore/Ketovore/TKD）</title>
+<meta name="theme-color" content="#0b0b0f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 :root{--bg:#0b0b0f;--card:#151821;--text:#e8eef6;--muted:#9fb0c3;--acc:#48d1b5;--bad:#ff7575;--warn:#ffb454;--border:#23304a}
-body{margin:0;background:linear-gradient(180deg,var(--bg),#0b0b0f00);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,var(--bg),#0b0b0f00);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
 header{padding:16px;font-weight:800;font-size:18px;display:flex;justify-content:space-between;align-items:center}
-.wrap{max-width:900px;margin:auto;padding:10px}
+a{color:var(--acc)} .wrap{max-width:900px;margin:auto;padding:10px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin:10px 0}
 .grid{display:grid;grid-template-columns:1fr;gap:10px}
 @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
 label{display:block;font-size:13px;color:var(--muted);margin:8px 0 6px}
 input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0f1218;color:var(--text)}
 button{background:var(--acc);border:none;font-weight:700;cursor:pointer}
-.small{font-size:12px;color:var(--muted)}
-h3{margin:4px 0 10px}
+.small{font-size:12px;color:var(--muted)} h3{margin:4px 0 10px}
 .kpi{background:#0f1218;border:1px solid var(--border);padding:10px;border-radius:10px}
 .bad{color:var(--bad)} .warn{color:var(--warn)}
+.sectionTitle{font-weight:800;margin:6px 0 12px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.tab{background:#101420;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer}
+.tab.active{background:var(--acc);border-color:transparent;color:#07231d}
+.space{height:10px}
 </style>
 </head>
 <body>
 <header>
   <div>食材ガイド＋目安量</div>
-  <a href="https://neocarnivore.github.io" style="color:var(--acc);text-decoration:none">▶ プランナーへ</a>
+  <a href="https://neocarnivore.github.io">▶ プランナーへ</a>
 </header>
 
 <div class="wrap">
+
   <!-- 条件入力 -->
   <div class="card">
     <div class="grid">
@@ -62,13 +70,14 @@ h3{margin:4px 0 10px}
         </select>
       </div>
     </div>
-    <div style="margin-top:10px"><button id="go">計算</button></div>
+    <div class="space"></div>
+    <button id="go">計算</button>
     <p class="small" style="margin-top:6px">※100gあたり代表値（目安）：肉類220 kcal / 魚介類150 kcal / 卵150 kcal / 乳製品270 kcal / 野菜30 kcal / 果物60 kcal / ナッツ類600 kcal</p>
   </div>
 
   <!-- 結果：カテゴリ別 目安量 -->
   <div class="card" id="suggest" style="display:none">
-    <h3>カテゴリ別・目安量（g / kcal）</h3>
+    <h3>食材カテゴリ別・目安量（g / kcal）</h3>
     <div class="grid">
       <div class="kpi"><b>肉・魚・魚介類</b><div>約 <span id="gMeat">–</span> g ｜ <span id="kMeat">–</span> kcal</div></div>
       <div class="kpi"><b>卵・乳製品</b><div>約 <span id="gDairy">–</span> g ｜ <span id="kDairy">–</span> kcal</div></div>
@@ -77,7 +86,15 @@ h3{margin:4px 0 10px}
     <p class="small" id="note"></p>
   </div>
 
-  <!-- 辞典（推奨/注意/避ける） -->
+  <!-- 食事法タブ -->
+  <div class="sectionTitle">辞典（推奨 / 注意 / 避ける）</div>
+  <div class="tabs" id="dietTabs">
+    <button class="tab" data-diet="Carnivore">CARNIVORE</button>
+    <button class="tab active" data-diet="Ketovore">KETOVORE</button>
+    <button class="tab" data-diet="TKD">肉食寄りTKD</button>
+  </div>
+
+  <!-- 辞典本体 -->
   <div id="dict"></div>
 
   <footer class="small" style="margin:20px 0 30px">
@@ -88,9 +105,7 @@ h3{margin:4px 0 10px}
 </div>
 
 <script>
-const $ = s => document.querySelector(s);
-
-// ---- データ（辞典は上のguide.htmlと同様。簡略版） ----
+// ====== データ（辞典） ======
 const CATS = [
   {id:"meat",  name:"1. 肉・魚・魚介類"},
   {id:"oil",   name:"2. 調理用オイル＆調味料"},
@@ -102,17 +117,17 @@ const CATS = [
 
 const GUIDE = {
   Carnivore:{
-    meat:{ok:["牛・豚・鶏","魚（サーモン等）","内臓"], caution:["加工肉","味付け肉"], avoid:["パン粉付き肉","ソース漬け"]},
-    oil:{ok:["バター/ギー/ラード","未精製塩"], caution:["精製塩の摂り過ぎ"], avoid:["植物油","市販ドレッシング"]},
-    dairy:{ok:["卵","（耐性あれば）チーズ少量"], caution:["乳製品は控えめ"], avoid:["低脂肪乳/加糖ヨーグルト"]},
-    vege:{ok:["基本0（移行期に最小限）"], caution:["糖質多い野菜"], avoid:["根菜・穀物・多量の葉物"]},
+    meat:{ok:["牛・豚・鶏（赤身/脂身）","魚（サーモン・イワシ等）","内臓（レバー・心臓・腎臓）"], caution:["加工肉（ベーコン等）","味付け肉（砂糖/植物油）"], avoid:["パン粉付き肉","ソース漬け"]},
+    oil:{ok:["バター/ギー/ラード","未精製塩","生姜・黒胡椒・味噌・レモン"], caution:["精製塩の摂り過ぎ"], avoid:["植物油","市販ドレッシング"]},
+    dairy:{ok:["卵（2〜6個/日）","（耐性あれば）チーズ少量"], caution:["乳製品は控えめ"], avoid:["低脂肪乳/加糖ヨーグルト/菓子系チーズ"]},
+    vege:{ok:["（基本0）移行期に最小限","ネギ類・トマト少量"], caution:["糖質多い野菜"], avoid:["根菜・穀物・多量の葉物"]},
     drink:{ok:["水/無糖茶/コーヒー","ボーンブロス"], caution:["カフェイン過多"], avoid:["砂糖飲料"]},
-    snack:{ok:["基本は不要（空腹時は肉を優先）"], caution:["ナッツ/ベリー最小限"], avoid:["“低糖”スナック/バー"]}
+    snack:{ok:["基本は不要（空腹時は肉優先）"], caution:["ナッツ/ベリー最小限"], avoid:["“低糖”スナック/バー"]}
   },
   Ketovore:{
-    meat:{ok:["牛・豚・鶏","魚介","内臓(週1〜2)"], caution:["加工肉/味付け肉"], avoid:["パン粉付き肉"]},
+    meat:{ok:["牛・豚・鶏","魚介（オメガ3）","内臓(週1〜2)"], caution:["加工肉/味付け肉"], avoid:["パン粉付き肉"]},
     oil:{ok:["バター/ギー/ラード","オリーブ油(低温)"], caution:["MCT過多"], avoid:["種子油","市販ドレッシング"]},
-    dairy:{ok:["チーズ","無糖/ギリシャヨーグルト","生クリーム少量","卵"], caution:["乳糖に注意"], avoid:["加糖乳/植物性ミルク"]},
+    dairy:{ok:["チーズ","無糖/ギリシャヨーグルト","生クリーム少量","卵"], caution:["乳糖注意"], avoid:["加糖乳/植物性ミルク"]},
     vege:{ok:["葉物/キノコ/ネギ","トマト少量","ベリー少量"], caution:["根菜/多量の野菜"], avoid:["穀物/芋系"]},
     drink:{ok:["水/無糖茶/コーヒー","ボーンブロス"], caution:["甘味料飲料"], avoid:["砂糖飲料"]},
     snack:{ok:["ナッツ少量","ベリー＋無糖ヨーグルト"], caution:["加工バー"], avoid:["砂糖お菓子"]}
@@ -120,27 +135,31 @@ const GUIDE = {
   TKD:{
     meat:{ok:["赤身肉/鶏胸/魚介","運動前後は脂少なめ"], caution:["脂質過多"], avoid:["砂糖入り加工肉"]},
     oil:{ok:["バター/ギー/ラード","MCT少量"], caution:["油の摂り過ぎ"], avoid:["種子油"]},
-    dairy:{ok:["卵","ギリシャヨーグルト","ホエイ"], caution:["脂質過多に注意"], avoid:["加糖乳製品"]},
-    vege:{ok:["低糖質野菜","運動日に少量の糖質源"], caution:["糖質過多"], avoid:["穀物/砂糖菓子"]},
+    dairy:{ok:["卵","ギリシャヨーグルト","ホエイ"], caution:["脂質過多注意"], avoid:["加糖乳製品"]},
+    vege:{ok:["低糖質野菜","（運動日に）少量の糖質源"], caution:["糖質過多"], avoid:["穀物/砂糖菓子"]},
     drink:{ok:["水/無糖茶/コーヒー","電解質(無糖)","ボーンブロス"], caution:["カフェイン過多"], avoid:["加糖飲料"]},
     snack:{ok:["プロテイン","ナッツ少量","ベリー少量"], caution:["加工バー"], avoid:["砂糖お菓子"]}
   }
 };
 
-// ---- 目安量計算（シンプル版） ----
+// ====== 目安量計算（シンプル） ======
 // 代表kcal（100gあたり→カテゴリ混成を3グループに圧縮）
 const KCAL = { meat:220, dairy:240, veg:150 };
 
+const $ = s => document.querySelector(s);
+
 function carbBy(diet, carbSel){ return diet==="Carnivore" ? 8 : Number(carbSel||30); }
+
 function dayFactor(diet, fitness){
   if(fitness==="none") return 1.00;
   if(diet==="Carnivore") return fitness==="workout"?1.05:0.97;
   if(diet==="Ketovore") return fitness==="workout"?1.06:0.98;
-  return fitness==="workout"?1.07:0.97;
+  return fitness==="workout"?1.07:0.97; // TKD
 }
-function splits(diet, carbSel, fitness){
+
+function splits(diet, carb, fitness){
   let s={meat:0.7,dairy:0.2,veg:0.1};
-  const level = (carbSel<=30)?30:(carbSel<=50)?50:70;
+  const level = (carb<=30)?30:(carb<=50)?50:70;
   if(diet==="Carnivore"){ s={meat:0.78,dairy:0.22,veg:0}; }
   else if(diet==="Ketovore"){
     if(level===30) s={meat:0.70,dairy:0.20,veg:0.10};
@@ -148,7 +167,7 @@ function splits(diet, carbSel, fitness){
     if(level===70) s={meat:0.58,dairy:0.17,veg:0.25};
     if(fitness==="workout"){ s.meat+=0.04; s.veg=Math.max(0,s.veg-0.04); }
     if(fitness==="rest"){ s.dairy+=0.03; s.meat=Math.max(0,s.meat-0.02); s.veg=Math.max(0,s.veg-0.01); }
-  }else{
+  }else{ // TKD
     if(fitness==="workout"){
       if(level===30) s={meat:0.65,dairy:0.15,veg:0.20};
       if(level===50) s={meat:0.58,dairy:0.15,veg:0.27};
@@ -169,12 +188,12 @@ function calc(){
   const fitness = $("#fitness").value;
   const carbSel = +$("#carb").value||30;
 
-  // ざっくりTDEE（活動補正は固定1.55、簡略）
-  const bmr = 24 * w * 0.9; // ラフな推定（性別/年齢簡略）
+  // ざっくりTDEE（簡略）
+  const bmr = 24 * w * 0.9;
   const tdee = bmr * dayFactor(diet, fitness) * 1.2;
 
-  const P = w * 1.8;
-  const C = carbBy(diet, carbSel);
+  const P = w * 1.8;                 // 1.8 g/kg
+  const C = carbBy(diet, carbSel);   // 糖質目安
   let F = (tdee - 4*P - 4*C) / 9; if(F<0) F=0;
   const kcal = 4*P + 4*C + 9*F;
 
@@ -188,17 +207,10 @@ function calc(){
   $("#gMeat").textContent=gMeat; $("#kMeat").textContent=Math.round(kMeat);
   $("#gDairy").textContent=gDairy; $("#kDairy").textContent=Math.round(kDairy);
   $("#gVeg").textContent=(diet==="Carnivore"?0:gVeg); $("#kVeg").textContent=Math.round(kVeg);
-  $("#note").textContent = `食事法：${diet==="TKD"?"肉食寄りTKD":diet} ／ フィットネス：${fitness==="workout"?"運動日":fitness==="rest"?"休息日":"該当なし"} ／ 糖質目安：${diet==="Carnivore"?"5〜10g":C+"g"}`;
+  $("#note").textContent = `食事法：${diet==="TKD"?"肉食寄りTKD":diet} ／ フィットネス：${fitness==="workout"?"運動日":fitness==="rest"?"休息日":"該当なし"} ／ 糖質目安：${diet==="Carnivore"?"5〜10g":C+"g"} ／ 計算カロリー約 ${Math.round(kcal)} kcal/日`;
 }
 
-$("#diet").addEventListener("change", ()=>{
-  // Carnivoreのとき糖質タブは非表示
-  const show = $("#diet").value!=="Carnivore";
-  document.getElementById("carbBox").style.display = show?"block":"none";
-});
-document.getElementById("go").addEventListener("click", calc);
-
-// 初期レンダー：辞典
+// 辞典レンダー
 function renderDict(diet="Ketovore"){
   const box = document.getElementById("dict");
   box.innerHTML="";
@@ -215,8 +227,31 @@ function renderDict(diet="Ketovore"){
     box.appendChild(card);
   });
 }
+
+// イベント
+document.getElementById("diet").addEventListener("change", ()=>{
+  // Carnivoreのとき糖質タブは非表示
+  const show = document.getElementById("diet").value!=="Carnivore";
+  document.getElementById("carbBox").style.display = show?"block":"none";
+});
+document.getElementById("go").addEventListener("click", calc);
+
+// タブ切替
+document.querySelectorAll(".tab").forEach(b=>{
+  b.addEventListener("click",e=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    e.currentTarget.classList.add("active");
+    renderDict(e.currentTarget.dataset.diet);
+  });
+});
+
+// 初期表示
 renderDict();
-document.getElementById("diet").addEventListener("change", e=>renderDict(e.target.value));
+
+// ====== PWA: Service Worker 登録 ======
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js'); });
+}
 </script>
 </body>
 </html>
